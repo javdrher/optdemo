@@ -1,4 +1,5 @@
 from GPflow.param import Parameterized, AutoFlow, ParamList, DataHolder
+from GPflow.model import Model
 from GPflow._settings import settings
 
 import numpy as np
@@ -28,6 +29,9 @@ class Acquisition(Parameterized):
 
     def _optimize_all(self):
         for model in self.models:
+            # If likelihood variance is close to zero, updating data may result in non-invertible K
+            # Increase likelihood variance a bit.
+            model.likelihood.variance = np.minimum(1.5 * model.likelihood.variance.value, 1.0)
             model.optimize()
 
     def _build_acquisition_wrapper(self, Xcand, gradients=True):
@@ -45,8 +49,8 @@ class Acquisition(Parameterized):
             num_outputs_sum += num_outputs
 
             model.X = X
-            #model.Y = (Ypart - np.mean(Ypart, axis=0)) / np.std(Ypart, axis=0)
             model.Y = Ypart
+
         self._optimize_all()
         self.setup()
         return num_outputs_sum
@@ -93,10 +97,12 @@ class ExpectedImprovement(Acquisition):
     """
     def __init__(self, model):
         super(ExpectedImprovement, self).__init__(model)
+        assert(isinstance(model, Model))
         self.fmin = DataHolder(np.zeros(1))
         self.setup()
 
     def setup(self):
+        super(ExpectedImprovement, self).setup()
         # Obtain the lowest posterior mean for the previous evaluations
         samples_mean, _ = self.models[0].predict_f(self.data[0])
         self.fmin.set_data(np.min(samples_mean, axis=0))

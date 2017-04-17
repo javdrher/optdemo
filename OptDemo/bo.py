@@ -59,7 +59,6 @@ class BayesianOptimizer(Optimizer):
         :return: OptimizeResult object
         """
         X, Y = self.acquisition.data
-        num_evaluations = self.acquisition.data[0].shape[0] - self.get_initial().shape[0]
 
         # Filter on constraints
         # Extend with valid column - in case of no constrains
@@ -68,7 +67,6 @@ class BayesianOptimizer(Optimizer):
 
         if not np.any(valid):
             return OptimizeResult(success=False,
-                                  nfev=num_evaluations,
                                   message="No evaluations satisfied the constraints")
 
         valid_X = X[valid,:]
@@ -82,24 +80,41 @@ class BayesianOptimizer(Optimizer):
         return OptimizeResult(x=valid_X[idx,:],
                               success=success,
                               fun=valid_Yo[idx,:],
-                              nfev=num_evaluations,
                               message=message)
 
-    def optimize(self, fxs, n_iter):
+    def optimize(self, objectivefx, n_iter=20):
         """
         Run Bayesian optimization for a number of iterations. Each iteration a new data point is selected by optimizing
         an acquisition function. This point is evaluated on the objective and black-box constraints. This retrieved
         information then updates the model
-        :param fxs: (list of) expensive black-box objective and constraint functions
+        :param objectivefx: (list of) expensive black-box objective and constraint functions
         :param n_iter: number of iterations to run
         :return: OptimizeResult object
         """
-        initial = self.get_initial()
-        values = self._evaluate(initial, fxs)
-        self._update_model_data(initial, values)
 
+        # Bayesian optimization is Gradient-free: provide wrapper. Also anticipate for lists and pass on a function
+        # which satisfies the optimizer.optimize interface
+        fx = lambda X: (self._evaluate(X, objectivefx), np.zeros((X.shape[0],0)))
+        return super(BayesianOptimizer, self).optimize(fx, n_iter=n_iter)
+
+    def _optimize(self, fx, n_iter):
+        """
+        Internal optimization function. Receives and ObjectiveWrapper
+        :param fx: ObjectiveWrapper object wrapping expensive black-box objective and constraint functions
+        :param n_iter: number of iterations to run
+        :return: OptimizeResult object
+        """
+
+        # Evaluate and add the initial design (if any)
+        initial = self.get_initial()
+        values = fx(initial)
+        self._update_model_data(initial, values)
+        # Remove initial design for additional calls to optimize to proceed optimization
+        self.set_initial(EmptyDesign(self.domain).generate())
+
+        # Optimization loop
         for i in range(n_iter):
             result = self.optimizer.optimize(self._acquisition_wrapper)
-            self._update_model_data(result.x, self._evaluate(result.x, fxs))
+            self._update_model_data(result.x, fx(result.x))
 
         return self._create_result(True, "OK")
