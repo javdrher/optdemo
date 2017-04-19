@@ -1,5 +1,5 @@
 import numpy as np
-from itertools import chain, imap
+from itertools import chain
 
 from GPflow.param import Parentable
 
@@ -14,11 +14,11 @@ class Domain(Parentable):
 
     @property
     def lower(self):
-        return np.array(map(lambda param: param.lower, self._parameters)).flatten()
+        return np.array(list(map(lambda param: param.lower, self._parameters))).flatten()
 
     @property
     def upper(self):
-        return np.array(map(lambda param: param.upper, self._parameters)).flatten()
+        return np.array(list(map(lambda param: param.upper, self._parameters))).flatten()
 
     #def optimize(self, optimizer, objectivefx):
     #    optimizer.domain = self
@@ -51,7 +51,7 @@ class Domain(Parentable):
         return np.all(np.logical_and((self.lower <= X), (X <= self.upper)))
 
     def __iter__(self):
-        for v in chain(*imap(iter, self._parameters)):
+        for v in chain(*map(iter, self._parameters)):
             yield v
 
     def __getitem__(self, item):

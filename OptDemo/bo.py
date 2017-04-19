@@ -1,9 +1,9 @@
 import numpy as np
 from scipy.optimize import OptimizeResult
 
-from acquisition import Acquisition
-from optim import Optimizer, SciPyOptimizer
-from design import EmptyDesign
+from .acquisition import Acquisition
+from .optim import Optimizer, SciPyOptimizer
+from .design import EmptyDesign
 
 
 class BayesianOptimizer(Optimizer):

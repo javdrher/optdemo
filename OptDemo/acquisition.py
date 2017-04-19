@@ -31,7 +31,7 @@ class Acquisition(Parameterized):
         for model in self.models:
             # If likelihood variance is close to zero, updating data may result in non-invertible K
             # Increase likelihood variance a bit.
-            model.likelihood.variance = np.minimum(1.5 * model.likelihood.variance.value, 1.0)
+            model.likelihood.variance = 2.0
             model.optimize()
 
     def _build_acquisition_wrapper(self, Xcand, gradients=True):
@@ -58,7 +58,7 @@ class Acquisition(Parameterized):
     @property
     def data(self):
         if self._tf_mode:
-            return self.models[0].X, tf.concat(map(lambda model: model.Y, self.models), 1)
+            return self.models[0].X, tf.concat(list(map(lambda model: model.Y, self.models)), 1)
         else:
             return self.models[0].X.value, np.hstack(map(lambda model: model.Y.value, self.models))
 

@@ -114,7 +114,7 @@ class SciPyOptimizer(Optimizer):
         result = minimize(fun=objective,
                           x0=self.get_initial(),
                           jac=self.gradient_enabled(),
-                          bounds = zip(self.domain.lower, self.domain.upper),
+                          bounds=list(zip(self.domain.lower, self.domain.upper)),
                           **self.config)
         return result
 
